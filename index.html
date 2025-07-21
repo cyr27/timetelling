@@ -340,42 +340,24 @@
             return phrase;
         }
 
-        // Variable to track the element that initiated a touch (for tap detection)
-        let touchStartedElement = null;
-
         /**
          * Handles the touchstart event for a word item.
-         * Records the element that started the touch.
          * @param {Event} e The touchstart event object.
-         */
-        function handleWordTouchStart(e) {
-            e.preventDefault(); // Prevent default touch behaviors like scrolling/zooming
-            touchStartedElement = e.target;
-        }
-
-        /**
-         * Handles the touchend event for a word item.
-         * Moves the word between word bank and drop zone if it's a valid tap.
-         * @param {Event} e The touchend event object.
          * @param {number} playerIndex The index of the player (0 or 1).
          */
-        function handleWordTouchEnd(e, playerIndex) {
-            e.preventDefault(); // Prevent default touch behaviors
+        function handleWordTouch(e, playerIndex) {
+            e.preventDefault(); // Prevent default touch behaviors like scrolling/zooming/double-tap zoom
             const wordItem = e.target;
-            // Check if the touch ended on the same element it started on (a tap)
-            if (wordItem === touchStartedElement) {
-                const dropZone = document.getElementById(`dropZone${playerIndex + 1}`);
-                const wordBank = document.getElementById(`wordBank${playerIndex + 1}`);
+            const dropZone = document.getElementById(`dropZone${playerIndex + 1}`);
+            const wordBank = document.getElementById(`wordBank${playerIndex + 1}`);
 
-                if (wordItem.parentNode === wordBank) {
-                    // Word is in word bank, move to drop zone
-                    dropZone.appendChild(wordItem);
-                } else if (wordItem.parentNode === dropZone) {
-                    // Word is in drop zone, move back to word bank
-                    wordBank.appendChild(wordItem);
-                }
+            if (wordItem.parentNode === wordBank) {
+                // Word is in word bank, move to drop zone
+                dropZone.appendChild(wordItem);
+            } else if (wordItem.parentNode === dropZone) {
+                // Word is in drop zone, move back to word bank
+                wordBank.appendChild(wordItem);
             }
-            touchStartedElement = null; // Reset for next touch
         }
 
         /**
@@ -402,9 +384,10 @@
                 wordItem.classList.add('word-item', 'px-3', 'py-2', 'rounded-md', 'cursor-pointer', 'select-none');
                 wordItem.textContent = word;
                 wordItem.dataset.word = word; // Store the word in a data attribute
-                // Attach touch listeners
-                wordItem.addEventListener('touchstart', handleWordTouchStart);
-                wordItem.addEventListener('touchend', (e) => handleWordTouchEnd(e, playerIndex));
+                // Attach touchstart listener, which now handles the move directly
+                wordItem.addEventListener('touchstart', (e) => handleWordTouch(e, playerIndex));
+                // Also attach click listener for mouse compatibility (e.g., if testing on desktop)
+                wordItem.addEventListener('click', (e) => handleWordTouch(e, playerIndex));
                 wordBank.appendChild(wordItem);
             });
         }
