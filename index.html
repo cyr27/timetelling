@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Time Telling Challenge</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* Light blue-gray background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .game-container {
+            display: flex;
+            flex-direction: row; /* Changed to row by default */
+            flex-wrap: wrap; /* Allow wrapping to new row if space is limited */
+            gap: 20px;
+            max-width: 1200px;
+            width: 100%;
+            background-color: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            justify-content: center; /* Center items when they are side-by-side */
+            align-items: flex-start; /* Align items to the top */
+        }
+        .player-section {
+            background-color: #e2e8f0; /* Lighter blue-gray for player sections */
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            flex: 1; /* Allows sections to grow and shrink */
+            min-width: 300px; /* Minimum width before wrapping */
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+        .clock-canvas {
+            background-color: #ffffff;
+            border: 4px solid #4a90e2; /* Blue border for clock */
+            border-radius: 50%;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+        .word-bank, .drop-zone {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            min-height: 60px;
+            border: 2px dashed #94a3b8; /* Gray dashed border */
+            border-radius: 8px;
+            padding: 10px;
+            width: 100%;
+            justify-content: center;
+            align-items: center;
+            background-color: #f8fafc; /* Very light background */
+        }
+        .word-item {
+            background-color: #60a5fa; /* Blue background for words */
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer; /* Changed to pointer for clickability */
+            font-weight: 600;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            transition: transform 0.1s ease-in-out, background-color 0.2s;
+            user-select: none; /* Prevent text selection on tap */
+            touch-action: manipulation; /* Improves touch responsiveness */
+        }
+        .word-item:active {
+            transform: scale(0.95);
+        }
+        .game-button { /* Unified style for buttons */
+            background-color: #10b981; /* Green button */
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+            border: none;
+            margin-top: 10px; /* Add some margin */
+        }
+        .game-button:hover:not(:disabled) {
+            background-color: #059669; /* Darker green on hover */
+            transform: translateY(-2px);
+        }
+        .game-button:active:not(:disabled) {
+            transform: translateY(0);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .game-button:disabled {
+            background-color: #a7f3d0; /* Lighter green when disabled */
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        .feedback-message {
+            font-weight: 600;
+            margin-top: 10px;
+            padding: 8px 15px;
+            border-radius: 8px;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+        }
+        .feedback-message.correct {
+            background-color: #d1fae5; /* Light green */
+            color: #065f46; /* Dark green text */
+            opacity: 1;
+        }
+        .feedback-message.incorrect {
+            background-color: #fee2e2; /* Light red */
+            color: #991b1b; /* Dark red text */
+            opacity: 1;
+        }
+        .feedback-message.timed-out {
+            background-color: #ffeccf; /* Light orange */
+            color: #b45309; /* Dark orange text */
+            opacity: 1;
+        }
+        .score, .round-display, .timer-display {
+            font-size: 1.25rem; /* Large text for score */
+            font-weight: 700;
+            color: #1e3a8a; /* Dark blue for score */
+        }
+        .timer-display {
+            color: #ef4444; /* Red for timer */
+        }
+        .game-over-message {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: #1e3a8a;
+            text-align: center;
+            margin-top: 20px;
+            display: none; /* Hidden by default */
+        }
+        .game-over-message.visible {
+            display: block;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
+
+    <h1 class="text-4xl font-extrabold text-blue-800 mb-8 text-center">Time Telling Challenge!</h1>
+
+    <div class="game-container">
+        <!-- Player 1 Section -->
+        <div id="player1" class="player-section">
+            <h2 class="text-2xl font-bold text-blue-700">Player 1</h2>
+            <p class="round-display">Round: <span id="roundDisplay1">1</span>/10</p>
+            <p class="timer-display">Time Left: <span id="timerDisplay1">30</span>s</p>
+            <canvas id="clockCanvas1" class="clock-canvas" width="250" height="250"></canvas>
+            <p class="text-lg font-semibold text-gray-700">Arrange the words to show the time:</p>
+            <div id="dropZone1" class="drop-zone w-full"></div>
+            <div id="wordBank1" class="word-bank w-full"></div>
+            <button id="submitButton1" class="game-button">Submit Answer</button>
+            <button id="nextRoundButton1" class="game-button hidden">Next Round</button>
+            <p class="score">Score: <span id="score1">0</span></p>
+            <div id="feedback1" class="feedback-message"></div>
+            <div id="gameOverMessage1" class="game-over-message"></div>
+        </div>
+
+        <!-- Player 2 Section -->
+        <div id="player2" class="player-section">
+            <h2 class="text-2xl font-bold text-blue-700">Player 2</h2>
+            <p class="round-display">Round: <span id="roundDisplay2">1</span>/10</p>
+            <p class="timer-display">Time Left: <span id="timerDisplay2">30</span>s</p>
+            <canvas id="clockCanvas2" class="clock-canvas" width="250" height="250"></canvas>
+            <p class="text-lg font-semibold text-gray-700">Arrange the words to show the time:</p>
+            <div id="dropZone2" class="drop-zone w-full"></div>
+            <div id="wordBank2" class="word-bank w-full"></div>
+            <button id="submitButton2" class="game-button">Submit Answer</button>
+            <button id="nextRoundButton2" class="game-button hidden">Next Round</button>
+            <p class="score">Score: <span id="score2">0</span></p>
+            <div id="feedback2" class="feedback-message"></div>
+            <div id="gameOverMessage2" class="game-over-message"></div>
+        </div>
+    </div>
+
+    <script>
+        // Global game state
+        let playerScores = [0, 0];
+        let playerRounds = [1, 1]; // Current round for each player
+        const totalRounds = 10;
+        const roundTimeLimit = 30; // seconds
+        let playerTimers = [roundTimeLimit, roundTimeLimit];
+        let playerIntervalIds = [null, null];
+        let gameEnded = [false, false];
+
+        let correctPhrases = ["", ""]; // Stores the correct phrase for each player's current question
+        let currentTimes = [{}, {}]; // Stores {hour, minute} for each player's current question
+
+        const distractorWords = ["very", "exactly", "around", "after", "before", "nearly", "just", "past", "to", "the"];
+
+        /**
+         * Shuffles an array in place using the Fisher-Yates (Knuth) shuffle algorithm.
+         * @param {Array} array The array to shuffle.
+         */
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]]; // Swap elements
+            }
+        }
+
+        /**
+         * Draws an analog clock on the given canvas.
+         * @param {string} canvasId The ID of the canvas element.
+         * @param {number} hour The hour to display (0-23).
+         * @param {number} minute The minute to display (0-59).
+         */
+        function drawClock(canvasId, hour, minute) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const radius = canvas.width / 2;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.translate(radius, radius); // Move origin to center of canvas
+
+            // Draw clock face
+            ctx.beginPath();
+            ctx.arc(0, 0, radius * 0.9, 0, 2 * Math.PI);
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
+            ctx.lineWidth = 5;
+            ctx.strokeStyle = '#4a90e2'; // Blue border
+            ctx.stroke();
+
+            // Draw center dot
+            ctx.beginPath();
+            ctx.arc(0, 0, radius * 0.05, 0, 2 * Math.PI);
+            ctx.fillStyle = '#333333';
+            ctx.fill();
+
+            // Draw numbers
+            ctx.font = radius * 0.15 + "px Arial";
+            ctx.textBaseline = "middle";
+            ctx.textAlign = "center";
+            ctx.fillStyle = '#333333';
+            for (let num = 1; num <= 12; num++) {
+                const ang = num * Math.PI / 6;
+                ctx.rotate(ang);
+                ctx.translate(0, -radius * 0.8);
+                ctx.fillText(num.toString(), 0, 0);
+                ctx.translate(0, radius * 0.8);
+                ctx.rotate(-ang);
+            }
+
+            // Draw minute marks
+            for (let i = 0; i < 60; i++) {
+                ctx.beginPath();
+                ctx.lineWidth = (i % 5 === 0) ? 3 : 1;
+                ctx.strokeStyle = '#666666';
+                ctx.moveTo(0, -radius * 0.85);
+                ctx.lineTo(0, -radius * 0.9);
+                ctx.stroke();
+                ctx.rotate(Math.PI / 30); // 360 degrees / 60 minutes = 6 degrees per minute mark
+            }
+
+            // Draw hands
+            // Hour hand
+            let hr = hour % 12;
+            hr = (hr * Math.PI / 6) + (minute * Math.PI / (6 * 60));
+            drawHand(ctx, hr, radius * 0.5, radius * 0.07, '#333333');
+
+            // Minute hand
+            let min = (minute * Math.PI / 30);
+            drawHand(ctx, min, radius * 0.8, radius * 0.05, '#333333');
+
+            ctx.translate(-radius, -radius); // Reset origin
+        }
+
+        /**
+         * Helper function to draw a clock hand.
+         * @param {CanvasRenderingContext2D} ctx The canvas rendering context.
+         * @param {number} pos The angle of the hand in radians.
+         * @param {number} length The length of the hand.
+         * @param {number} width The width of the hand.
+         * @param {string} color The color of the hand.
+         */
+        function drawHand(ctx, pos, length, width, color) {
+            ctx.beginPath();
+            ctx.lineWidth = width;
+            ctx.lineCap = "round";
+            ctx.strokeStyle = color;
+            ctx.moveTo(0, 0);
+            ctx.rotate(pos);
+            ctx.lineTo(0, -length);
+            ctx.stroke();
+            ctx.rotate(-pos);
+        }
+
+        /**
+         * Generates a random time focusing on o'clock, quarter past, half past, quarter to.
+         * @returns {{hour: number, minute: number}} An object with hour (1-12) and minute (0, 15, 30, 45).
+         */
+        function generateRandomTime() {
+            const hour = Math.floor(Math.random() * 12) + 1; // 1 to 12
+            const minutesOptions = [0, 15, 30, 45];
+            const minute = minutesOptions[Math.floor(Math.random() * minutesOptions.length)];
+            return { hour, minute };
+        }
+
+        /**
+         * Converts a given time to a human-readable phrase.
+         * @param {number} hour The hour (1-12).
+         * @param {number} minute The minute (0-59).
+         * @returns {string} The time phrase (e.g., "half past three").
+         */
+        function timeToWords(hour, minute) {
+            const numWords = ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"];
+            let phrase = "";
+
+            switch (minute) {
+                case 0:
+                    phrase = `${numWords[hour - 1]} o'clock`;
+                    break;
+                case 15:
+                    phrase = `a quarter past ${numWords[hour - 1]}`;
+                    break;
+                case 30:
+                    phrase = `half past ${numWords[hour - 1]}`;
+                    break;
+                case 45:
+                    const nextHour = (hour % 12) + 1; // For "quarter to" the next hour
+                    phrase = `a quarter to ${numWords[nextHour - 1]}`;
+                    break;
+                default:
+                    // This case should ideally not be hit with current generateRandomTime logic
+                    phrase = `Error: Invalid minute ${minute}`;
+            }
+            return phrase;
+        }
+
+        // Variable to track the element that initiated a touch (for tap detection)
+        let touchStartedElement = null;
+
+        /**
+         * Handles the touchstart event for a word item.
+         * Records the element that started the touch.
+         * @param {Event} e The touchstart event object.
+         */
+        function handleWordTouchStart(e) {
+            e.preventDefault(); // Prevent default touch behaviors like scrolling/zooming
+            touchStartedElement = e.target;
+        }
+
+        /**
+         * Handles the touchend event for a word item.
+         * Moves the word between word bank and drop zone if it's a valid tap.
+         * @param {Event} e The touchend event object.
+         * @param {number} playerIndex The index of the player (0 or 1).
+         */
+        function handleWordTouchEnd(e, playerIndex) {
+            e.preventDefault(); // Prevent default touch behaviors
+            const wordItem = e.target;
+            // Check if the touch ended on the same element it started on (a tap)
+            if (wordItem === touchStartedElement) {
+                const dropZone = document.getElementById(`dropZone${playerIndex + 1}`);
+                const wordBank = document.getElementById(`wordBank${playerIndex + 1}`);
+
+                if (wordItem.parentNode === wordBank) {
+                    // Word is in word bank, move to drop zone
+                    dropZone.appendChild(wordItem);
+                } else if (wordItem.parentNode === dropZone) {
+                    // Word is in drop zone, move back to word bank
+                    wordBank.appendChild(wordItem);
+                }
+            }
+            touchStartedElement = null; // Reset for next touch
+        }
+
+        /**
+         * Creates and populates the word bank for a player.
+         * @param {string[]} correctWords The words that form the correct phrase.
+         * @param {number} playerIndex The index of the player (0 or 1).
+         */
+        function createWordBank(correctWords, playerIndex) {
+            const wordBank = document.getElementById(`wordBank${playerIndex + 1}`);
+            wordBank.innerHTML = ''; // Clear previous words
+
+            const allWords = [...correctWords];
+            // Add a few random distractors, ensuring they are not part of the correct words
+            const availableDistractors = distractorWords.filter(d => !correctWords.includes(d));
+            for (let i = 0; i < Math.min(3, availableDistractors.length); i++) { // Add up to 3 distractors
+                const randomIndex = Math.floor(Math.random() * availableDistractors.length);
+                allWords.push(availableDistractors.splice(randomIndex, 1)[0]); // Add and remove to avoid duplicates
+            }
+
+            shuffleArray(allWords); // Shuffle all words (correct + distractors)
+
+            allWords.forEach(word => {
+                const wordItem = document.createElement('span');
+                wordItem.classList.add('word-item', 'px-3', 'py-2', 'rounded-md', 'cursor-pointer', 'select-none');
+                wordItem.textContent = word;
+                wordItem.dataset.word = word; // Store the word in a data attribute
+                // Attach touch listeners
+                wordItem.addEventListener('touchstart', handleWordTouchStart);
+                wordItem.addEventListener('touchend', (e) => handleWordTouchEnd(e, playerIndex));
+                wordBank.appendChild(wordItem);
+            });
+        }
+
+        /**
+         * Displays feedback message to the user.
+         * @param {number} playerIndex The index of the player (0 or 1).
+         * @param {string} message The message to display.
+         * @param {boolean} isCorrect True if the answer was correct, false otherwise.
+         * @param {boolean} isTimedOut True if the answer was due to timeout.
+         */
+        function showFeedback(playerIndex, message, isCorrect, isTimedOut = false) {
+            const feedbackElement = document.getElementById(`feedback${playerIndex + 1}`);
+            feedbackElement.textContent = message;
+            feedbackElement.classList.remove('correct', 'incorrect', 'timed-out');
+            if (isTimedOut) {
+                feedbackElement.classList.add('timed-out');
+            } else if (isCorrect) {
+                feedbackElement.classList.add('correct');
+            } else {
+                feedbackElement.classList.add('incorrect');
+            }
+            // Make it visible
+            feedbackElement.style.opacity = 1;
+        }
+
+        /**
+         * Starts the timer for a given player.
+         * @param {number} playerIndex The index of the player (0 or 1).
+         */
+        function startTimer(playerIndex) {
+            // Clear any existing timer
+            clearInterval(playerIntervalIds[playerIndex]);
+            playerTimers[playerIndex] = roundTimeLimit;
+            document.getElementById(`timerDisplay${playerIndex + 1}`).textContent = playerTimers[playerIndex];
+
+            playerIntervalIds[playerIndex] = setInterval(() => {
+                playerTimers[playerIndex]--;
+                document.getElementById(`timerDisplay${playerIndex + 1}`).textContent = playerTimers[playerIndex];
+
+                if (playerTimers[playerIndex] <= 0) {
+                    clearInterval(playerIntervalIds[playerIndex]);
+                    showFeedback(playerIndex, "Time's Up! Moving to next round.", false, true);
+                    // Automatically check answer (even if empty)
+                    checkAnswer(playerIndex, true);
+                }
+            }, 1000);
+        }
+
+        /**
+         * Initializes a player's game state and UI.
+         * @param {number} playerIndex The index of the player (0 or 1).
+         */
+        function initializePlayer(playerIndex) {
+            playerScores[playerIndex] = 0;
+            playerRounds[playerIndex] = 1;
+            gameEnded[playerIndex] = false;
+
+            document.getElementById(`score${playerIndex + 1}`).textContent = playerScores[playerIndex];
+            document.getElementById(`roundDisplay${playerIndex + 1}`).textContent = playerRounds[playerIndex];
+            document.getElementById(`gameOverMessage${playerIndex + 1}`).classList.remove('visible');
+            document.getElementById(`player${playerIndex + 1}`).style.opacity = 1; // Ensure player section is visible
+
+            // Set up button listeners
+            document.getElementById(`submitButton${playerIndex + 1}`).addEventListener('click', () => {
+                if (!gameEnded[playerIndex]) {
+                    checkAnswer(playerIndex, false);
+                }
+            });
+            document.getElementById(`nextRoundButton${playerIndex + 1}`).addEventListener('click', () => {
+                if (!gameEnded[playerIndex]) {
+                    playerRounds[playerIndex]++;
+                    document.getElementById(`feedback${playerIndex + 1}`).style.opacity = 0; // Hide feedback immediately
+                    nextQuestion(playerIndex);
+                }
+            });
+
+            nextQuestion(playerIndex); // Start the first question
+        }
+
+        /**
+         * Generates and sets up the next question for a player.
+         * @param {number} playerIndex The index of the player (0 or 1).
+         */
+        function nextQuestion(playerIndex) {
+            if (playerRounds[playerIndex] > totalRounds) {
+                endGame(playerIndex);
+                return;
+            }
+
+            // Update round display
+            document.getElementById(`roundDisplay${playerIndex + 1}`).textContent = playerRounds[playerIndex];
+
+            const time = generateRandomTime();
+            currentTimes[playerIndex] = time;
+            drawClock(`clockCanvas${playerIndex + 1}`, time.hour, time.minute);
+
+            const phrase = timeToWords(time.hour, time.minute);
+            correctPhrases[playerIndex] = phrase;
+
+            const correctWords = phrase.split(' ');
+            createWordBank(correctWords, playerIndex);
+
+            // Clear drop zone
+            document.getElementById(`dropZone${playerIndex + 1}`).innerHTML = '';
+
+            // Enable submit button, hide next round button
+            document.getElementById(`submitButton${playerIndex + 1}`).disabled = false;
+            document.getElementById(`submitButton${playerIndex + 1}`).classList.remove('hidden');
+            document.getElementById(`nextRoundButton${playerIndex + 1}`).classList.add('hidden');
+
+            startTimer(playerIndex); // Start timer for the new question
+        }
+
+        /**
+         * Checks the player's answer, updates score, and provides feedback.
+         * @param {number} playerIndex The index of the player (0 or 1).
+         * @param {boolean} isTimedOut True if the function was called due to a timer timeout.
+         */
+        function checkAnswer(playerIndex, isTimedOut) {
+            clearInterval(playerIntervalIds[playerIndex]); // Stop the timer
+            document.getElementById(`submitButton${playerIndex + 1}`).disabled = true; // Disable submit button
+            document.getElementById(`nextRoundButton${playerIndex + 1}`).classList.remove('hidden'); // Show next round button
+
+            const dropZone = document.getElementById(`dropZone${playerIndex + 1}`);
+            const arrangedWords = Array.from(dropZone.children).map(item => item.dataset.word).join(' ');
+
+            if (isTimedOut) {
+                showFeedback(playerIndex, `Time's Up! The correct time was: "${correctPhrases[playerIndex]}"`, false, true);
+            } else if (arrangedWords === correctPhrases[playerIndex]) {
+                playerScores[playerIndex]++;
+                document.getElementById(`score${playerIndex + 1}`).textContent = playerScores[playerIndex];
+                showFeedback(playerIndex, "Correct! Well done!", true);
+            } else {
+                showFeedback(playerIndex, `Incorrect. The correct time was: "${correctPhrases[playerIndex]}"`, false);
+            }
+        }
+
+        /**
+         * Ends the game for a specific player.
+         * @param {number} playerIndex The index of the player (0 or 1).
+         */
+        function endGame(playerIndex) {
+            gameEnded[playerIndex] = true;
+            clearInterval(playerIntervalIds[playerIndex]); // Stop any running timer
+
+            const gameOverMessage = document.getElementById(`gameOverMessage${playerIndex + 1}`);
+            gameOverMessage.textContent = `Game Over! Your final score is: ${playerScores[playerIndex]}/${totalRounds}`;
+            gameOverMessage.classList.add('visible');
+
+            // Hide game elements and disable buttons
+            document.getElementById(`submitButton${playerIndex + 1}`).classList.add('hidden');
+            document.getElementById(`nextRoundButton${playerIndex + 1}`).classList.add('hidden');
+            document.getElementById(`dropZone${playerIndex + 1}`).innerHTML = ''; // Clear drop zone
+            document.getElementById(`wordBank${playerIndex + 1}`).innerHTML = ''; // Clear word bank
+            document.getElementById(`timerDisplay${playerIndex + 1}`).textContent = '0'; // Reset timer display
+            document.getElementById(`feedback${playerIndex + 1}`).style.opacity = 0; // Hide feedback
+
+            // Optionally, make the section look "finished"
+            document.getElementById(`player${playerIndex + 1}`).style.opacity = 0.7; // Dim the section
+        }
+
+        // Initialize both players when the window loads
+        window.onload = function() {
+            initializePlayer(0); // Player 1
+            initializePlayer(1); // Player 2
+        };
+    </script>
+</body>
+</html>
