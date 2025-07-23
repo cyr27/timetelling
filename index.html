@@ -145,6 +145,10 @@
         .game-over-message.visible {
             display: block;
         }
+        /* Styles for elements that are hidden before game start */
+        .initial-hidden {
+            display: none;
+        }
     </style>
 </head>
 <body class="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
@@ -155,13 +159,14 @@
         <!-- Player 1 Section -->
         <div id="player1" class="player-section">
             <h2 class="text-2xl font-bold text-blue-700">Player 1</h2>
-            <p class="round-display">Round: <span id="roundDisplay1">1</span>/10</p>
-            <p class="timer-display">Time Left: <span id="timerDisplay1">30</span>s</p>
-            <canvas id="clockCanvas1" class="clock-canvas" width="250" height="250"></canvas>
-            <p class="text-lg font-semibold text-gray-700">Arrange the words to show the time:</p>
-            <div id="dropZone1" class="drop-zone w-full"></div>
-            <div id="wordBank1" class="word-bank w-full"></div>
-            <button id="submitButton1" class="game-button">Submit Answer</button>
+            <p class="round-display initial-hidden">Round: <span id="roundDisplay1">1</span>/10</p>
+            <p class="timer-display initial-hidden">Time Left: <span id="timerDisplay1">30</span>s</p>
+            <canvas id="clockCanvas1" class="clock-canvas initial-hidden" width="250" height="250"></canvas>
+            <p class="text-lg font-semibold text-gray-700 initial-hidden">Arrange the words to show the time:</p>
+            <div id="dropZone1" class="drop-zone w-full initial-hidden"></div>
+            <div id="wordBank1" class="word-bank w-full initial-hidden"></div>
+            <button id="startButton1" class="game-button">Start Game</button>
+            <button id="submitButton1" class="game-button initial-hidden">Submit Answer</button>
             <button id="nextRoundButton1" class="game-button hidden">Next Round</button>
             <p class="score">Score: <span id="score1">0</span></p>
             <div id="feedback1" class="feedback-message"></div>
@@ -171,13 +176,14 @@
         <!-- Player 2 Section -->
         <div id="player2" class="player-section">
             <h2 class="text-2xl font-bold text-blue-700">Player 2</h2>
-            <p class="round-display">Round: <span id="roundDisplay2">1</span>/10</p>
-            <p class="timer-display">Time Left: <span id="timerDisplay2">30</span>s</p>
-            <canvas id="clockCanvas2" class="clock-canvas" width="250" height="250"></canvas>
-            <p class="text-lg font-semibold text-gray-700">Arrange the words to show the time:</p>
-            <div id="dropZone2" class="drop-zone w-full"></div>
-            <div id="wordBank2" class="word-bank w-full"></div>
-            <button id="submitButton2" class="game-button">Submit Answer</button>
+            <p class="round-display initial-hidden">Round: <span id="roundDisplay2">1</span>/10</p>
+            <p class="timer-display initial-hidden">Time Left: <span id="timerDisplay2">30</span>s</p>
+            <canvas id="clockCanvas2" class="clock-canvas initial-hidden" width="250" height="250"></canvas>
+            <p class="text-lg font-semibold text-gray-700 initial-hidden">Arrange the words to show the time:</p>
+            <div id="dropZone2" class="drop-zone w-full initial-hidden"></div>
+            <div id="wordBank2" class="word-bank w-full initial-hidden"></div>
+            <button id="startButton2" class="game-button">Start Game</button>
+            <button id="submitButton2" class="game-button initial-hidden">Submit Answer</button>
             <button id="nextRoundButton2" class="game-button hidden">Next Round</button>
             <p class="score">Score: <span id="score2">0</span></p>
             <div id="feedback2" class="feedback-message"></div>
@@ -451,7 +457,13 @@
             document.getElementById(`gameOverMessage${playerIndex + 1}`).classList.remove('visible');
             document.getElementById(`player${playerIndex + 1}`).style.opacity = 1; // Ensure player section is visible
 
+            // Hide game elements initially
+            toggleGameElementsVisibility(playerIndex, false);
+
             // Set up button listeners
+            document.getElementById(`startButton${playerIndex + 1}`).addEventListener('click', () => {
+                startGame(playerIndex);
+            });
             document.getElementById(`submitButton${playerIndex + 1}`).addEventListener('click', () => {
                 if (!gameEnded[playerIndex]) {
                     checkAnswer(playerIndex, false);
@@ -465,7 +477,35 @@
                 }
             });
 
-            nextQuestion(playerIndex); // Start the first question
+            // Draw a blank clock initially
+            drawClock(`clockCanvas${playerIndex + 1}`, 12, 0);
+        }
+
+        /**
+         * Toggles the visibility of game elements for a player.
+         * @param {number} playerIndex The index of the player (0 or 1).
+         * @param {boolean} show True to show, false to hide.
+         */
+        function toggleGameElementsVisibility(playerIndex, show) {
+            const playerSection = document.getElementById(`player${playerIndex + 1}`);
+            const elementsToToggle = playerSection.querySelectorAll('.initial-hidden');
+            elementsToToggle.forEach(el => {
+                if (show) {
+                    el.classList.remove('initial-hidden');
+                } else {
+                    el.classList.add('initial-hidden');
+                }
+            });
+        }
+
+        /**
+         * Starts the game for a specific player.
+         * @param {number} playerIndex The index of the player (0 or 1).
+         */
+        function startGame(playerIndex) {
+            document.getElementById(`startButton${playerIndex + 1}`).classList.add('hidden');
+            toggleGameElementsVisibility(playerIndex, true); // Show game elements
+            nextQuestion(playerIndex);
         }
 
         /**
@@ -546,8 +586,10 @@
             document.getElementById(`timerDisplay${playerIndex + 1}`).textContent = '0'; // Reset timer display
             document.getElementById(`feedback${playerIndex + 1}`).style.opacity = 0; // Hide feedback
 
-            // Optionally, make the section look "finished"
-            document.getElementById(`player${playerIndex + 1}`).style.opacity = 0.7; // Dim the section
+            // Hide all game-specific elements and show only score/game over message
+            toggleGameElementsVisibility(playerIndex, false);
+            document.getElementById(`startButton${playerIndex + 1}`).classList.remove('hidden'); // Show start button again for replay
+            document.getElementById(`startButton${playerIndex + 1}`).textContent = 'Play Again'; // Change text for replay
         }
 
         // Initialize both players when the window loads
